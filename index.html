@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MiniMax H3 LoRA Comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0d14; --panel: #141826; --panel-2: #1b2033; --line: #262c44; --text: #e7e9f3; --muted: #9aa1bd;
+  --pdmd: #a78bfa; --dmad: #2dd4bf; --fused: #fbbf24; --accent: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --chip: #23293f;
+}
+:root[data-theme="light"] {
+  --bg: #eef0f7; --panel: #ffffff; --panel-2: #f3f4fa; --line: #d9dcea; --text: #1a1d2b; --muted: #5d6380; --chip: #e7e9f3;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) { --bg: #eef0f7; --panel: #ffffff; --panel-2: #f3f4fa; --line: #d9dcea; --text: #1a1d2b; --muted: #5d6380; --chip: #e7e9f3; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; }
+button { font: inherit; color: inherit; cursor: pointer; }
+header.top {
+  position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
+}
+.bar { max-width: 1600px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.logo { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); display: grid; place-items: center; font-size: 18px; flex: none; }
+.brand h1 { font-size: 16px; margin: 0; line-height: 1.2; white-space: nowrap; }
+.brand p { margin: 0; font-size: 12px; color: var(--muted); }
+.legend { display: flex; gap: 8px; flex-wrap: wrap; }
+.legend span { font-size: 12px; padding: 4px 9px; border-radius: 999px; background: var(--chip); display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.spacer { flex: 1; }
+.gbtn { padding: 7px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); font-size: 13px; font-weight: 600; }
+.gbtn:hover { border-color: var(--muted); }
+nav.tests { max-width: 1600px; margin: 0 auto; padding: 0 16px 10px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; }
+nav.tests a {
+  flex: none; text-decoration: none; color: var(--muted); font-size: 12px; padding: 5px 10px; border-radius: 8px;
+  background: var(--chip); border: 1px solid transparent; white-space: nowrap;
+}
+nav.tests a.on { color: var(--text); border-color: #7c6cf0; }
+main { max-width: 1600px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 28px; }
+.test { scroll-margin-top: 110px; }
+.stage {
+  position: relative; width: min(100%, calc((100vh - 150px) * 16 / 9)); margin: 0 auto; aspect-ratio: 16 / 9;
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+}
+.cell { position: relative; background: #000; overflow: hidden; min-width: 0; min-height: 0; }
+.prompt { background: var(--panel); display: flex; flex-direction: column; padding: 14px 16px 12px; gap: 8px; }
+.ph { display: flex; align-items: baseline; gap: 10px; }
+.num { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 7px; background: var(--accent); color: #fff; }
+.ph h2 { font-size: 17px; margin: 0; line-height: 1.25; }
+.dur { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.ptext { flex: 1; overflow-y: auto; font-size: 12.5px; line-height: 1.55; color: var(--text); padding-right: 6px; scrollbar-width: thin; }
+.ptext .shot { display: inline-block; margin: 6px 6px 0 0; font-size: 11px; font-weight: 700; color: #fff; background: #4f46e5; padding: 1px 6px; border-radius: 5px; }
+.ptext .lab { display: inline-block; margin: 8px 6px 0 0; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px; background: var(--chip); }
+.pctl { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pbtn { padding: 8px 14px; border-radius: 10px; border: 0; font-weight: 700; font-size: 13px; }
+.pbtn.play { background: var(--accent); color: #fff; }
+.pbtn.stop { background: var(--chip); }
+.hint { font-size: 11px; color: var(--muted); margin-left: auto; }
+video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+.tag {
+  position: absolute; left: 10px; top: 10px; display: flex; align-items: center; gap: 7px; padding: 5px 10px;
+  border-radius: 9px; background: rgba(8, 10, 18, .72); color: #fff; font-size: 12.5px; font-weight: 700; backdrop-filter: blur(6px);
+}
+.tag i { width: 9px; height: 9px; border-radius: 50%; }
+.tag small { font-weight: 500; color: #c9cde0; }
+.chips { position: absolute; right: 10px; top: 10px; display: flex; gap: 5px; }
+.chips button { font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 7px; border: 1px solid rgba(255,255,255,.25); background: rgba(8,10,18,.6); color: #dfe2f0; }
+.chips button.on { background: #fff; color: #111; }
+.ctrls { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.ibtn {
+  width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(8, 10, 18, .72); color: #fff;
+  display: grid; place-items: center; font-size: 15px; backdrop-filter: blur(6px); flex: none;
+}
+.ibtn:hover { background: rgba(40, 44, 70, .9); }
+.ibtn.audio.live { background: #fff; color: #111; }
+.prog { flex: 1; height: 5px; border-radius: 3px; background: rgba(255,255,255,.18); overflow: hidden; cursor: pointer; }
+.prog b { display: block; height: 100%; width: 0; background: #fff; }
+.meta { font-size: 11px; color: #c9cde0; background: rgba(8,10,18,.6); padding: 3px 7px; border-radius: 6px; white-space: nowrap; }
+.cell[data-m="pdmd"] { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pdmd) 0%, transparent); }
+.cell.vid.focus { position: absolute; inset: 0; z-index: 20; }
+.cell.vid .close { display: none; }
+.cell.vid.focus .close { display: grid; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; color: #8b90a8; font-size: 12px; pointer-events: none; }
+.soloring { position: absolute; inset: 0; border: 3px solid transparent; pointer-events: none; border-radius: 2px; }
+.cell.solo .soloring { border-color: #fff; }
+footer { text-align: center; color: var(--muted); font-size: 12px; padding: 10px 16px 30px; }
+kbd { font-family: inherit; font-size: 11px; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel-2); }
+@media (max-width: 760px) {
+  .stage { aspect-ratio: auto; width: 100%; grid-template-columns: 1fr; grid-template-rows: none; }
+  .cell.vid { aspect-ratio: 16 / 9; }
+  .prompt { max-height: 340px; }
+  .cell.vid.focus { position: relative; inset: auto; }
+  .brand h1 { white-space: normal; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    <div class="brand"><div class="logo">🎬</div><div><h1>MiniMax H3 · 4-step LoRA comparison</h1><p>Same prompts, three distillations · Kaggle T4 ×2 · AIQUEST Academy</p></div></div>
+    <div class="legend"><span><i style="background:var(--pdmd)"></i>PDMD</span><span><i style="background:var(--dmad)"></i>DMAD</span><span><i style="background:var(--fused)"></i>Fused turbo</span></div>
+    <div class="spacer"></div>
+    <button class="gbtn" id="muteAll" title="Mute every video (M)">🔇 Mute all</button>
+    <button class="gbtn" id="theme" title="Light / dark">◐</button>
+  </div>
+  <nav class="tests" id="nav"></nav>
+</header>
+<main id="main"></main>
+<footer>
+  <kbd>Space</kbd> play / stop the test on screen · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> listen to PDMD / DMAD / Fused · <kbd>M</kbd> mute · <kbd>Esc</kbd> close the enlarged video<br>
+  ⚡ Made with ❤️ by <strong>AIQUEST Academy</strong> · aiquest.site
+</footer>
+
+<script>
+const MODELS = [["pdmd", "PDMD", "4-step \u00b7 base H3 + PDMD LoRA"], ["dmad", "DMAD", "4-step \u00b7 base H3 + DMAD LoRA"], ["fused", "Fused turbo", "4-step \u00b7 MATLOWAI Ref2VA turbo"]];
+const TESTS = [{"n": 1, "title": "Polar bear violinist", "dur": "5 s", "prompt": "A polar bear is playing the violin in the snow.", "cells": {"pdmd": [{"v": 0, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "1459988019", "file": "pdmd-01-polar-bear-violinist-480p-seed1459988019.mp4", "chip": "480p"}], "dmad": [{"v": 1, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "237096938", "file": "dmad-01-polar-bear-violinist-480p-seed237096938.mp4", "chip": "480p"}], "fused": [{"v": 2, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "1614991577", "file": "fused-01-polar-bear-violinist-480p-seed1614991577.mp4", "chip": "480p"}]}}, {"n": 2, "title": "Boxing knockout · AIQUEST vs Enemy", "dur": "10 s", "prompt": "<span class='shot'>[Shot 1]</span> Live-action, cinematic, a dynamic low three-quarter tracking shot follows a muscular adult boxer in black shorts and black gloves lettered &quot;AIQUEST&quot; across the knuckles advancing fast across a regulation ring under bright white overhead lights, a championship belt fastened at his waist with raised metal lettering reading &quot;AIQUEST&quot;. The second boxer, in white shorts and red gloves lettered &quot;Enemy&quot; across the knuckles, wears a matching belt lettered &quot;Enemy&quot; and retreats with his guard raised, watching for a counter. The camera tracks right at fast speed across clean canvas as the crowd fills the bright arena behind them and the black-clad boxer throws a powerful right cross toward his opponent.<br><span class='shot'>[Shot 2]</span> At 00:03.000, the camera cuts to a tight side view at the instant of contact: the right glove, &quot;AIQUEST&quot; clear across its knuckles, reaches the white-clad boxer as he turns his head, and the punch connects cleanly against cheek and jaw while his feet stay planted and his upper body reacts to the force.<br><span class='shot'>[Shot 3]</span> At 00:06.000, the shot cuts to a bullet-time orbit in which time slows almost completely. Both fighters hold the exact instant of impact, the black &quot;AIQUEST&quot; glove pressed against the jaw and the red &quot;Enemy&quot; glove still raised, and the camera performs a smooth one-hundred-eighty-degree arc shot from the front-left of the ring around to the rear-right while suspended sweat droplets and canvas fibers catch the lights and the belt lettering &quot;AIQUEST&quot; passes through a bright specular highlight.<br><span class='shot'>[Shot 4]</span> At 00:09.500, the camera cuts back to normal speed as the white-clad boxer with the &quot;Enemy&quot; belt snaps backward, stumbles several rapid steps, and drops to one knee near the ropes, catching himself with one &quot;Enemy&quot; glove on the canvas while the referee moves in and begins the count. The camera pushes in with small amplitude at slow speed on the standing boxer, ending on the &quot;AIQUEST&quot; belt lit hard against a clean bright arena.<br><span class='lab snd'>🔊 Sound</span> A loud arena crowd surrounds boxing footwork, canvas scuffs, glove movement, and heavy breathing, escalating as the exchange builds, and the punch lands as a sharp synchronized glove impact. During the slowed orbit the crowd stretches into a distant atmospheric rumble while the impact becomes an elongated low-frequency thump with subtle glove compression and fabric tension. Full-speed sound returns with stumbling footsteps, a heavy body drop on canvas, and a sudden crowd eruption.<br><span class='lab mus'>🎵 Music</span> Deep percussion and aggressive low strings accelerate through the approach and build to maximum density at the punch. The score stretches into one sustained orchestral tone through the slowed orbit, then the full percussion and low strings crash back at normal tempo for the knockdown.", "cells": {"pdmd": [{"v": 3, "res": "540p", "w": 960, "h": 544, "dur": 10.1, "seed": "302332526", "file": "pdmd-02-boxing-knockout-aiquest-vs-enemy-540p-seed302332526.mp4", "chip": "540p · take 1"}, {"v": 4, "res": "540p", "w": 960, "h": 544, "dur": 10.1, "seed": "1579193264", "file": "pdmd-02-boxing-knockout-aiquest-vs-enemy-540p-seed1579193264.mp4", "chip": "540p · take 2"}], "dmad": [{"v": 5, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "919403039", "file": "dmad-02-boxing-knockout-aiquest-vs-enemy-480p-seed919403039.mp4", "chip": "480p"}], "fused": [{"v": 6, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "268512830", "file": "fused-02-boxing-knockout-aiquest-vs-enemy-480p-seed268512830.mp4", "chip": "480p"}]}}, {"n": 3, "title": "Mecha vs sea giantess in the storm", "dur": "10 s", "prompt": "<span class='shot'>[Shot 1]</span> Live-action, photorealistic blockbuster cinematography, a night sequence in heavy rain over a dark ocean: a weathered humanoid mecha with scarred metallic plating stands waist-deep as water churns violently around its legs, its shoulder spotlights cutting beams through thick mist and reflecting off wet armor. The camera pushes in at fast speed toward the ocean surface, where massive waves displace outward and a gigantic monstrous woman rises from the depths, at least twice the mecha&#x27;s height, with grey skin marked by glowing teal patterning, two human-like primary arms, and two large black three-clawed limbs mounted on a hard carapace across her back. She emerges sprinting toward the mecha, and at 00:02.000 the camera zooms in on her face and upper body mid-run, catching a brief human-like flicker of pity and mockery in her glowing eyes.<br><span class='shot'>[Shot 2]</span> At 00:06.000, the camera cuts to a close view as she violently swings her secondary left claw-arm across the mecha&#x27;s chest. The claws smash into the central armor with immense force, just missing the reactor housing, driving visible mechanical recoil through the outer plates and sending showers of sparks and glowing embers outward while the camera shakes strongly and tilts to emphasize the weight of the impact. The mecha is set back heavily and absorbs several further blows as it tries to counter, both figures trading strikes in the rain with the giant woman keeping the upper hand, water sheeting from their bodies with every movement.<br><span class='lab snd'>🔊 Sound</span> Heavy rain drums against metal plating while ocean waves surge around both figures. Mechanical servos whine through every movement, the first claw strike lands as a grinding metallic impact mixed with splashing seawater and a low-frequency rumble, and the counter-attack brings sharp hydraulic hisses and venting steam before a solid metal-on-metal clang.<br><span class='lab mus'>🎵 Music</span> Low brass stabs and heavy timpani hits begin at a moderate tempo as she rushes in, building in density through the exchange and ending on one sustained low bass note at the final block.", "cells": {"pdmd": [{"v": 7, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "870534805", "file": "pdmd-03-mecha-vs-sea-giantess-in-the-storm-480p-seed870534805.mp4", "chip": "480p"}], "dmad": [{"v": 8, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1912471596", "file": "dmad-03-mecha-vs-sea-giantess-in-the-storm-480p-seed1912471596.mp4", "chip": "480p"}], "fused": [{"v": 9, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1020114763", "file": "fused-03-mecha-vs-sea-giantess-in-the-storm-480p-seed1020114763.mp4", "chip": "480p"}]}}, {"n": 4, "title": "Squirrel climbs out of a photo", "dur": "5 s", "prompt": "Static overhead shot of a printed photo of a tree trunk lying on a wooden table.<br><b>Action Sequence:</b>1、A real human hand enters, places a single pinecone on the paper next to the tree hole, and exits immediately.2、A realistic 3D squirrel emerges from the 2D hole in the photo. The squirrel comes out empty-handed.3、The squirrel sniffs the pinecone sitting on the paper, looks curious, blinks, and tilts its head.4、The squirrel reaches out, grabs that specific pinecone from the table.Key details: Seamless interaction between real world and photo, surreal VFX, squirrel paws are empty initially, heavy weight perception on the pinecone.", "cells": {"pdmd": [{"v": 10, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "1781653145", "file": "pdmd-04-squirrel-climbs-out-of-a-photo-480p-seed1781653145.mp4", "chip": "480p"}], "dmad": [{"v": 11, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "1955378908", "file": "dmad-04-squirrel-climbs-out-of-a-photo-480p-seed1955378908.mp4", "chip": "480p"}], "fused": [{"v": 12, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "89204292", "file": "fused-04-squirrel-climbs-out-of-a-photo-480p-seed89204292.mp4", "chip": "480p"}]}}, {"n": 5, "title": "Cat DJ & dancing dog", "dur": "5 s", "prompt": "<span class='shot'>[Shot 1]</span> A dynamic, handheld documentary-style shot captures a vibrant nightclub scene bathed in pulsing neon purple and electric blue lighting. In the foreground, a sleek-furred cat wearing stylish black headphones stands behind a glowing turntable setup, its paws moving rapidly to spin records and gesture rhythmically. In the midground, a fluffy-coated dog dances energetically, holding colorful green and pink glow sticks in its paws, jumping, and twirling in sync with the beat. The camera pans slightly left and right with small amplitude to follow the dog&#x27;s movements while keeping the cat DJ in frame, creating a lively and festive atmosphere with dynamic shadows cast by the strobing lights. The background features blurred silhouettes of other partygoers and a glowing &quot;DJ&quot; sign.<br><span class='lab snd'>🔊 Sound</span> A high-energy electronic dance music track with a strong, driving bassline and rapid hi-hats fills the space, accompanied by the rhythmic thumping of the turntable needle and the faint, muffled sounds of a cheering crowd in the background.<br><span class='lab mus'>🎵 Music</span> N/A", "cells": {"pdmd": [{"v": 13, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "60842602", "file": "pdmd-05-cat-dj-dancing-dog-480p-seed60842602.mp4", "chip": "480p"}], "dmad": [{"v": 14, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "1593570946", "file": "dmad-05-cat-dj-dancing-dog-480p-seed1593570946.mp4", "chip": "480p"}], "fused": [{"v": 15, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "1422854217", "file": "fused-05-cat-dj-dancing-dog-480p-seed1422854217.mp4", "chip": "480p"}]}}, {"n": 6, "title": "Mecha rises on a salt flat", "dur": "10 s", "prompt": "<span class='shot'>[Shot 1]</span> Live-action, photoreal, a low wide view across a bright white salt flat covered by a thin mirror of water under a clean blue sky. In the middle distance a colossal ivory mecha kneels with one knee in the shallows, its armor matte and clean, bold lettering reading &quot;AIQUEST&quot; set across the chest plate. Two tiny engineers stand at its foot, giving the scale. The camera pushes in at slow speed as the machine’s optical band brightens and its fingers flex once, sending fine ripples outward across the mirrored surface.<br><span class='shot'>[Shot 2]</span> At 00:03.000, the camera cuts to a low three-quarter view as the mecha rises. One hand presses into the salt crust, the knee lifts, and the whole body straightens with deliberate weight, water sheeting from its plating in bright ribbons while the &quot;AIQUEST&quot; lettering clears the horizon line. The camera tilts up with large amplitude at slow speed to hold the full standing silhouette against open sky as the displaced water rolls outward in a wide clean ring.<br><span class='shot'>[Shot 3]</span> At 00:06.000, the shot cuts to a distant aerial view as the mecha takes one measured step forward, its reflection travelling with it across the flat. The camera pulls out with large amplitude at slow speed, revealing the enormous emptiness of the salt plain, the two engineers now invisible, and a distant line of pale mountains, ending with the machine small but dominant under a wide clear sky.<br><span class='lab snd'>🔊 Sound</span> Shallow water ripples and sheets off armor plating in broad falling rushes. Heavy servos turn with deep mechanical grinding, joints lock with solid metallic clunks, and each footfall lands as a low ground-borne thud followed by an outward wash of water across the salt crust.<br><span class='lab mus'>🎵 Music</span> Sustained low strings hold under a slow repeating bass pulse, joined by sparse metallic percussion as the machine rises and broadening into a held low chord at the final step.", "cells": {"pdmd": [{"v": 16, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1029017440", "file": "pdmd-06-mecha-rises-on-a-salt-flat-480p-seed1029017440.mp4", "chip": "480p"}], "dmad": [{"v": 17, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1533326675", "file": "dmad-06-mecha-rises-on-a-salt-flat-480p-seed1533326675.mp4", "chip": "480p"}], "fused": [{"v": 18, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1311221214", "file": "fused-06-mecha-rises-on-a-salt-flat-480p-seed1311221214.mp4", "chip": "480p"}]}}, {"n": 7, "title": "Hammerhead kaiju in New York", "dur": "10 s", "prompt": "<span class='shot'>[Shot 1]</span> Live-action, cinematic disaster film, an extreme-wide shot from street level in New York City looks up through grey dust and smoke at a colossal kaiju that dwarfs the skyscrapers, its face a flat hammerhead shark muzzle with rows of serrated teeth and glowing eyes, its arms carrying tattered leathery membranes. The camera shakes strongly as one massive membraned arm smashes into a nearby glass tower and the facade shatters, then tilts up with medium amplitude at fast speed to follow the creature as it rears back, concrete and steel falling into the street below.<br><span class='shot'>[Shot 2]</span> At 00:03.000, the camera cuts to a low-angle medium shot on the kaiju&#x27;s torso and head. The camera tracks right at fast speed, matching its lunge as the hammerhead face snaps toward a tower with jaws agape, debris rains down around the lens, and the heavy segmented tail whips into frame and smashes through a lower building.<br><span class='shot'>[Shot 3]</span> At 00:07.000, the shot cuts to an aerial tracking view that pulls out and pedestals up while moving through a wide arc shot at moderate speed around the creature. Its leathery wings beat the air, the spiked tail thrashes and carves through the city grid, dust clouds billow through shafts of diffused sunlight, and the shot ends with the kaiju looming over the devastated skyline in high-contrast grey, concrete brown, and muted steel blue with orange fire accents.<br><span class='lab snd'>🔊 Sound</span> Glass explodes and concrete slabs crash into the street in heavy overlapping collapses, with steel groaning as structures give way. The kaiju&#x27;s footfalls hit as deep ground-shaking impacts, its leathery wings beat slow displaced air, and a roar tears across the city and returns in long reverberations between buildings. Car alarms and distant sirens continue underneath.<br><span class='lab mus'>🎵 Music</span> Low brass clusters and heavy percussion enter at a slow tempo with a repeating bass pulse, increasing steadily through the second impact and broadening into sustained low strings over the final aerial view.", "cells": {"pdmd": [{"v": 19, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1001000190", "file": "pdmd-07-hammerhead-kaiju-in-new-york-480p-seed1001000190.mp4", "chip": "480p"}], "dmad": [{"v": 20, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1600705204", "file": "dmad-07-hammerhead-kaiju-in-new-york-480p-seed1600705204.mp4", "chip": "480p"}], "fused": [{"v": 21, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1241834958", "file": "fused-07-hammerhead-kaiju-in-new-york-480p-seed1241834958.mp4", "chip": "480p"}]}}, {"n": 8, "title": "Snowboard jump", "dur": "10 s", "prompt": "<span class='shot'>[Shot 1]</span> Live-action, cinematic, a wide rear-quarter tracking shot follows an adult snowboarder in a coral jacket, navy trousers, a white helmet, and amber goggles carving toward a groomed jump above a mountain valley under clear blue sky. The camera holds several meters behind and slightly left at matching speed, showing the dark-blue board&#x27;s edge cutting a clean curve and a narrow fan of snow trailing the turn. The jump lip and two distant triangular peaks stay visible ahead, and in the last second the rider bends the knees and aligns with the center of the takeoff ramp.<br><span class='shot'>[Shot 2]</span> At 00:03.000, the camera cuts on the takeoff to a side-tracking medium-wide view that preserves the left-to-right movement. The rider leaves the lip, tucks the knees, and performs one simple grab with a modest rotation, the board held beneath the body. Controlled slow motion carries the apex with the full silhouette against the sky and the mountains as a distant scale reference, then the grab releases and the legs extend toward the visible landing slope.<br><span class='shot'>[Shot 3]</span> At 00:07.000, the shot cuts to a wider camera downhill of the landing. The board contacts the slope, the knees absorb the impact, and the rider continues into one long carve while a brief snow spray follows the board and settles. The camera pedestals up at slow speed, revealing the whole jump, the landing area, and the expansive valley, and the frame ends with the coral figure still moving across clean white snow.<br><span class='lab snd'>🔊 Sound</span> The board edge cuts groomed snow with a rising granular hiss that sharpens through the carve. Takeoff brings a sudden drop to wind rushing past the rider, then the landing lands as a deep compressed thump followed by spraying snow and a renewed edge hiss. Jacket fabric snaps lightly in the airflow throughout.<br><span class='lab mus'>🎵 Music</span> A driving percussion pattern at a fast tempo with a low synthesizer bass line, thinning to sustained tones through the slow-motion apex and returning to full rhythm at the landing.", "cells": {"pdmd": [{"v": 22, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "268792974", "file": "pdmd-08-snowboard-jump-480p-seed268792974.mp4", "chip": "480p"}], "dmad": [{"v": 23, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1461351423", "file": "dmad-08-snowboard-jump-480p-seed1461351423.mp4", "chip": "480p"}], "fused": [{"v": 24, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1037384432", "file": "fused-08-snowboard-jump-480p-seed1037384432.mp4", "chip": "480p"}]}}, {"n": 9, "title": "Giant cat in the harbor", "dur": "10 s", "prompt": "<span class='shot'>[Shot 1]</span> Live-action, photoreal, a low wide view looks along a quiet waterfront promenade of white mid-rise buildings where two tiny pedestrians stop beside a white railing. Behind the roofline, the head of a building-sized orange tabby with a white chest rises gently into view, ears moving first, then green eyes appearing above the buildings in bright afternoon light. The camera tilts up with small amplitude at slow speed, keeping the promenade and people in the foreground while sunlight picks out soft natural fur and the cat blinks slowly with calm curiosity.<br><span class='shot'>[Shot 2]</span> At 00:03.000, the camera cuts to a medium-wide view across the harbor as a small white passenger ferry moves slowly past the cat&#x27;s white front paw resting on an empty stone quay. The cat lowers its head to watch the boat, whiskers shifting in the sea breeze, while the camera tracks with the ferry at matching speed, holding a generous gap between boat and animal as orange reflections ripple in the water.<br><span class='shot'>[Shot 3]</span> At 00:07.000, the shot cuts to a wide aerial view of the harbor district where the cat sits upright beside a broad public plaza, its ringed tail curling around an empty circular fountain without touching the buildings while the ferry continues along the same route below. The camera pulls out at slow speed to reveal the whole body and the orderly city around it, and in the final seconds the cat turns its head toward the sea, giving a clean profile against blue sky and open water.<br><span class='lab snd'>🔊 Sound</span> Harbor water laps against the quay while gulls call above the promenade and a light sea breeze crosses the railings. The ferry engine holds a low steady diesel rumble, and the cat&#x27;s movements carry deep soft fur rustles, slow heavy breathing, and a low rolling purr that rises during the final turn.<br><span class='lab mus'>🎵 Music</span> A light plucked-string pattern at a moderate tempo with soft woodwind notes and a low pizzicato bass line, holding an even volume throughout.", "cells": {"pdmd": [{"v": 25, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "2119032415", "file": "pdmd-09-giant-cat-in-the-harbor-480p-seed2119032415.mp4", "chip": "480p"}], "dmad": [{"v": 26, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1541613573", "file": "dmad-09-giant-cat-in-the-harbor-480p-seed1541613573.mp4", "chip": "480p"}], "fused": [{"v": 27, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1688537543", "file": "fused-09-giant-cat-in-the-harbor-480p-seed1688537543.mp4", "chip": "480p"}]}}, {"n": 10, "title": "Moss titan in the valley", "dur": "10 s", "prompt": "<span class='shot'>[Shot 1]</span> 3D CG, cinematic fantasy, a medium-wide view beside a small red footbridge over a clear stream frames a hiker in a cream jacket and blue backpack pausing on the bridge as a broad shadow moves gently across the water. The camera tilts up with medium amplitude at slow speed through a clean gap in enormous trees, revealing part of the pale stone shoulder and head of a mountain-sized titan covered in living moss beyond the canopy. Leaves move lightly in the breeze while the forest stays still enough for the enormous figure to read clearly as it looks toward the open meadow.<br><span class='shot'>[Shot 2]</span> At 00:03.000, the camera cuts to a wide side view at the forest edge as the titan takes one slow step out from between two huge trees and places its foot on an open stone terrace without crushing vegetation. Moss on its shoulders shifts subtly and long grass tufts bend in the displaced air while the camera trucks right at slow speed, keeping the entire body visible against blue sky with the red footbridge tiny in the lower background.<br><span class='shot'>[Shot 3]</span> At 00:06.000, the shot cuts to a high wide view across the bright alpine meadow as the titan settles into a still relaxed stance beside a mountain ridge, its pale stone body echoing the geology around it. The camera pulls out with large amplitude at slow speed to reveal stream, forest, bridge, and hiker as one coherent valley; the titan raises its head slightly toward the sunlight and then stays calm, the frame ending with the broad figure offset against open sky.<br><span class='lab snd'>🔊 Sound</span> A clear stream runs under the footbridge while wind moves through enormous leaves overhead. The titan&#x27;s step lands as a deep low ground impact with grinding stone and a soft shift of moss and loose earth, followed by a broad displacement of air across the grass and returning birdsong.<br><span class='lab mus'>🎵 Music</span> Sustained low strings at a slow tempo with a simple woodwind line, joined by soft choral tones as the titan steps out and settling into a held chord.", "cells": {"pdmd": [{"v": 28, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1059613284", "file": "pdmd-10-moss-titan-in-the-valley-480p-seed1059613284.mp4", "chip": "480p"}], "dmad": [{"v": 29, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "2040328887", "file": "dmad-10-moss-titan-in-the-valley-480p-seed2040328887.mp4", "chip": "480p"}], "fused": [{"v": 30, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "149419139", "file": "fused-10-moss-titan-in-the-valley-480p-seed149419139.mp4", "chip": "480p"}]}}, {"n": 11, "title": "Hikers find claw marks", "dur": "5 s", "prompt": "A wide shot of a misty Pacific Northwest forest. Two exhausted hikers, a man and a woman, push through ferns when the man stops abruptly, staring at a tree. Close-up: Fresh, deep claw marks are gouged into the tree&#x27;s bark. Man: (Hand on his hunting knife) &quot;That&#x27;s no ordinary bear.&quot; Woman: (Voice tight with fear, scanning the woods) &quot;Then what is it?&quot; A rough bark, snapping twigs, footsteps on the damp earth. A lone bird chirps.", "cells": {"pdmd": [{"v": 31, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "1835047470", "file": "pdmd-11-hikers-find-claw-marks-480p-seed1835047470.mp4", "chip": "480p"}, {"v": 32, "res": "720p", "w": 1280, "h": 704, "dur": 5.2, "seed": "750945950", "file": "pdmd-11-hikers-find-claw-marks-720p-seed750945950.mp4", "chip": "720p"}], "dmad": [{"v": 33, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "589646803", "file": "dmad-11-hikers-find-claw-marks-480p-seed589646803.mp4", "chip": "480p"}, {"v": 34, "res": "720p", "w": 1280, "h": 704, "dur": 5.2, "seed": "54475302", "file": "dmad-11-hikers-find-claw-marks-720p-seed54475302.mp4", "chip": "720p"}], "fused": [{"v": 35, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "104669137", "file": "fused-11-hikers-find-claw-marks-480p-seed104669137.mp4", "chip": "480p"}]}}, {"n": 12, "title": "Mural street · old man & young man", "dur": "5 s", "prompt": "A medium shot opens on a seasoned, grey-bearded man in sunglasses and a paisley shirt, Beside him, a younger man in a tank top. In the background, a vibrant mural splashes across a wall, hinting at an urban setting. Faint city murmurs and distant chatter drift in, accompanied by a mellow, soulful hip-hop beat that adds a contemplative yet grounded atmosphere. The older man speaks while the younger man turns toward him, laughs softly, shakes his head in amusement, and then looks back at the camera. The camera slowly pushes in. &quot;The city always got a story,&quot; the older man murmurs with a slight nod. The younger man chuckles and replies, &quot;Yeah, you always say that.&quot;", "cells": {"pdmd": [{"v": 36, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "1460602454", "file": "pdmd-12-mural-street-old-man-young-man-480p-seed1460602454.mp4", "chip": "480p"}, {"v": 37, "res": "720p", "w": 1280, "h": 704, "dur": 5.2, "seed": "1141417166", "file": "pdmd-12-mural-street-old-man-young-man-720p-seed1141417166.mp4", "chip": "720p"}], "dmad": [{"v": 38, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "1438611562", "file": "dmad-12-mural-street-old-man-young-man-480p-seed1438611562.mp4", "chip": "480p · take 1"}, {"v": 39, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "687143577", "file": "dmad-12-mural-street-old-man-young-man-480p-seed687143577.mp4", "chip": "480p · take 2"}], "fused": [{"v": 40, "res": "480p", "w": 832, "h": 480, "dur": 5.2, "seed": "495470408", "file": "fused-12-mural-street-old-man-young-man-480p-seed495470408.mp4", "chip": "480p"}]}}, {"n": 13, "title": "Office confrontation", "dur": "10 s", "prompt": "A woman with straight red hair in a black blazer points at a man with a buzz cut in a green jacket, saying coldly &quot;You had one job. One.&quot; A second man with glasses steps between them saying nervously &quot;Okay, both of you — just stop, please.&quot; CUT TO: Close-up on the red-haired woman, jaw tight, hissing &quot;Stay out of this.&quot; CUT TO: The man in the green jacket raises his voice — &quot;You think I wanted this to happen?!&quot; CUT TO: Wide three-shot of all characters mid-confrontation, all talking simultaneously. Photorealistic, dim office corridor lighting.", "cells": {"pdmd": [{"v": 41, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "222275221", "file": "pdmd-13-office-confrontation-480p-seed222275221.mp4", "chip": "480p"}], "dmad": [{"v": 42, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "1795082140", "file": "dmad-13-office-confrontation-480p-seed1795082140.mp4", "chip": "480p"}], "fused": [{"v": 43, "res": "480p", "w": 832, "h": 480, "dur": 10.1, "seed": "140774335", "file": "fused-13-office-confrontation-480p-seed140774335.mp4", "chip": "480p"}]}}];
+const SRCS = {"0": "videos/pdmd-01-polar-bear-violinist-480p-seed1459988019.mp4", "1": "videos/dmad-01-polar-bear-violinist-480p-seed237096938.mp4", "2": "videos/fused-01-polar-bear-violinist-480p-seed1614991577.mp4", "3": "videos/pdmd-02-boxing-knockout-aiquest-vs-enemy-540p-seed302332526.mp4", "4": "videos/pdmd-02-boxing-knockout-aiquest-vs-enemy-540p-seed1579193264.mp4", "5": "videos/dmad-02-boxing-knockout-aiquest-vs-enemy-480p-seed919403039.mp4", "6": "videos/fused-02-boxing-knockout-aiquest-vs-enemy-480p-seed268512830.mp4", "7": "videos/pdmd-03-mecha-vs-sea-giantess-in-the-storm-480p-seed870534805.mp4", "8": "videos/dmad-03-mecha-vs-sea-giantess-in-the-storm-480p-seed1912471596.mp4", "9": "videos/fused-03-mecha-vs-sea-giantess-in-the-storm-480p-seed1020114763.mp4", "10": "videos/pdmd-04-squirrel-climbs-out-of-a-photo-480p-seed1781653145.mp4", "11": "videos/dmad-04-squirrel-climbs-out-of-a-photo-480p-seed1955378908.mp4", "12": "videos/fused-04-squirrel-climbs-out-of-a-photo-480p-seed89204292.mp4", "13": "videos/pdmd-05-cat-dj-dancing-dog-480p-seed60842602.mp4", "14": "videos/dmad-05-cat-dj-dancing-dog-480p-seed1593570946.mp4", "15": "videos/fused-05-cat-dj-dancing-dog-480p-seed1422854217.mp4", "16": "videos/pdmd-06-mecha-rises-on-a-salt-flat-480p-seed1029017440.mp4", "17": "videos/dmad-06-mecha-rises-on-a-salt-flat-480p-seed1533326675.mp4", "18": "videos/fused-06-mecha-rises-on-a-salt-flat-480p-seed1311221214.mp4", "19": "videos/pdmd-07-hammerhead-kaiju-in-new-york-480p-seed1001000190.mp4", "20": "videos/dmad-07-hammerhead-kaiju-in-new-york-480p-seed1600705204.mp4", "21": "videos/fused-07-hammerhead-kaiju-in-new-york-480p-seed1241834958.mp4", "22": "videos/pdmd-08-snowboard-jump-480p-seed268792974.mp4", "23": "videos/dmad-08-snowboard-jump-480p-seed1461351423.mp4", "24": "videos/fused-08-snowboard-jump-480p-seed1037384432.mp4", "25": "videos/pdmd-09-giant-cat-in-the-harbor-480p-seed2119032415.mp4", "26": "videos/dmad-09-giant-cat-in-the-harbor-480p-seed1541613573.mp4", "27": "videos/fused-09-giant-cat-in-the-harbor-480p-seed1688537543.mp4", "28": "videos/pdmd-10-moss-titan-in-the-valley-480p-seed1059613284.mp4", "29": "videos/dmad-10-moss-titan-in-the-valley-480p-seed2040328887.mp4", "30": "videos/fused-10-moss-titan-in-the-valley-480p-seed149419139.mp4", "31": "videos/pdmd-11-hikers-find-claw-marks-480p-seed1835047470.mp4", "32": "videos/pdmd-11-hikers-find-claw-marks-720p-seed750945950.mp4", "33": "videos/dmad-11-hikers-find-claw-marks-480p-seed589646803.mp4", "34": "videos/dmad-11-hikers-find-claw-marks-720p-seed54475302.mp4", "35": "videos/fused-11-hikers-find-claw-marks-480p-seed104669137.mp4", "36": "videos/pdmd-12-mural-street-old-man-young-man-480p-seed1460602454.mp4", "37": "videos/pdmd-12-mural-street-old-man-young-man-720p-seed1141417166.mp4", "38": "videos/dmad-12-mural-street-old-man-young-man-480p-seed1438611562.mp4", "39": "videos/dmad-12-mural-street-old-man-young-man-480p-seed687143577.mp4", "40": "videos/fused-12-mural-street-old-man-young-man-480p-seed495470408.mp4", "41": "videos/pdmd-13-office-confrontation-480p-seed222275221.mp4", "42": "videos/dmad-13-office-confrontation-480p-seed1795082140.mp4", "43": "videos/fused-13-office-confrontation-480p-seed140774335.mp4"};
+const ready = Promise.resolve();
+const blobUrl = v => SRCS[v];                // the original MP4s, streamed as they are needed
+const fmt = s => { s = Math.max(0, s || 0); return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`; };
+const main = document.getElementById("main"), nav = document.getElementById("nav");
+let soloVideo = null;
+const allVideos = () => [...document.querySelectorAll("video")];
+
+function setSolo(video) {           // only one video is ever audible
+  soloVideo = video;
+  allVideos().forEach(v => { v.muted = v !== video; });
+  document.querySelectorAll(".cell.vid").forEach(c => {
+    const on = c.querySelector("video") === video;
+    c.classList.toggle("solo", on);
+    const b = c.querySelector(".audio"); b.classList.toggle("live", on); b.textContent = on ? "🔊" : "🔇";
+    b.title = on ? "Mute" : "Listen to this one (mutes the others)";
+  });
+}
+
+TESTS.forEach(t => {
+  const a = document.createElement("a");
+  a.href = "#t" + t.n; a.textContent = `${t.n} · ${t.title}`; a.dataset.n = t.n; nav.appendChild(a);
+  const sec = document.createElement("section");
+  sec.className = "test"; sec.id = "t" + t.n;
+  sec.innerHTML = `<div class="stage">
+    <div class="cell prompt"><div class="ph"><span class="num">#${t.n}</span><h2>${t.title}</h2><span class="dur">⏱ ${t.dur}</span></div>
+      <div class="ptext">${t.prompt}</div>
+      <div class="pctl"><button class="pbtn play">▶ Play all</button><button class="pbtn stop">■ Stop</button>
+      <span class="hint">all three play in sync, muted · 🔇 on a video to hear it</span></div></div>
+    ${MODELS.map(([k, name, sub]) => `<div class="cell vid" data-m="${k}">
+      <video playsinline muted loop preload="none"></video><div class="loading">loading…</div><div class="soloring"></div>
+      <div class="tag"><i style="background:var(--${k})"></i>${name} <small class="res"></small></div>
+      <div class="chips"></div>
+      <div class="ctrls"><button class="ibtn one" title="Play this one enlarged">▶</button>
+        <button class="ibtn audio" title="Listen to this one (mutes the others)">🔇</button>
+        <div class="prog"><b></b></div><span class="meta time">0:00</span>
+        <button class="ibtn close" title="Back to the grid (Esc)">✕</button></div></div>`).join("")}
+  </div>`;
+  main.appendChild(sec);
+  t.el = sec;
+  t.vids = {};
+  MODELS.forEach(([k, name, sub]) => {
+    const cell = sec.querySelector(`.cell[data-m="${k}"]`), video = cell.querySelector("video");
+    const entries = t.cells[k];
+    t.vids[k] = video;
+    cell.querySelector(".tag").title = sub;
+    const chips = cell.querySelector(".chips");
+    const choose = (e, keepTime) => {
+      cell.dataset.v = e.v;
+      cell.querySelector(".res").textContent = `${e.res} · seed ${e.seed}`;
+      cell.title = e.file;
+      chips.querySelectorAll("button").forEach(b => b.classList.toggle("on", +b.dataset.v === e.v));
+      if (t.loaded) { const playing = !video.paused; video.src = blobUrl(e.v); if (playing) video.play(); }
+    };
+    if (entries.length > 1) entries.forEach(e => {
+      const b = document.createElement("button"); b.textContent = e.chip; b.dataset.v = e.v;
+      b.onclick = () => choose(e); chips.appendChild(b);
+    });
+    choose(entries[0]);
+    video.addEventListener("loadeddata", () => cell.querySelector(".loading")?.remove());
+    video.addEventListener("loadedmetadata", () => { cell.querySelector(".time").textContent = `0:00 / ${fmt(video.duration)}`; });
+    video.addEventListener("timeupdate", () => {
+      cell.querySelector(".prog b").style.width = (100 * video.currentTime / (video.duration || 1)) + "%";
+      cell.querySelector(".time").textContent = `${fmt(video.currentTime)} / ${fmt(video.duration)}`;
+    });
+    cell.querySelector(".prog").onclick = ev => {
+      const r = ev.currentTarget.getBoundingClientRect();
+      video.currentTime = (ev.clientX - r.left) / r.width * (video.duration || 0);
+    };
+    cell.querySelector(".audio").onclick = () => setSolo(soloVideo === video ? null : video);
+    const one = cell.querySelector(".one");
+    one.onclick = async () => {
+      if (cell.classList.contains("focus")) {            // enlarged: toggle pause
+        if (video.paused) { video.play(); one.textContent = "⏸"; } else { video.pause(); one.textContent = "▶"; }
+        return;
+      }
+      stopAll();
+      await load(t);
+      sec.querySelectorAll(".cell.vid").forEach(c => c.classList.remove("focus"));
+      cell.classList.add("focus");
+      video.currentTime = 0; video.loop = true;
+      if (soloVideo !== video) video.muted = true;       // enlarged playback starts muted; 🔇 turns the sound on
+      video.play(); one.textContent = "⏸";
+    };
+    cell.querySelector(".close").onclick = () => { cell.classList.remove("focus"); video.pause(); one.textContent = "▶"; };
+  });
+  sec.querySelector(".play").onclick = () => playAll(t);
+  sec.querySelector(".stop").onclick = () => stopAll();
+});
+
+function load(t) {
+  if (!t.loading) t.loading = ready.then(() => {
+    t.loaded = true;
+    MODELS.forEach(([k]) => { const cell = t.el.querySelector(`.cell[data-m="${k}"]`); t.vids[k].preload = "metadata"; t.vids[k].src = blobUrl(+cell.dataset.v); });
+  });
+  return t.loading;
+}
+let syncTimer = null;
+function stopAll() {
+  clearInterval(syncTimer);
+  TESTS.forEach(t => {
+    if (!t.loaded) return;
+    t.el.querySelectorAll(".cell.vid").forEach(c => { c.classList.remove("focus"); c.querySelector(".one").textContent = "▶"; });
+    Object.values(t.vids).forEach(v => { v.pause(); v.currentTime = 0; });
+  });
+}
+async function playAll(t) {
+  stopAll(); await load(t);
+  const vids = Object.values(t.vids);
+  await Promise.all(vids.map(v => v.readyState >= 3 ? 0 : new Promise(r => v.addEventListener("canplay", r, { once: true }))));
+  vids.forEach(v => { v.loop = true; v.currentTime = 0; if (soloVideo !== v) v.muted = true; });
+  await Promise.allSettled(vids.map(v => v.play()));
+  syncTimer = setInterval(() => {               // keep the three within a few frames of each other
+    const lead = vids[0];
+    vids.slice(1).forEach(v => { if (!v.paused && Math.abs(v.currentTime - lead.currentTime) > 0.12 && Math.abs(v.duration - lead.duration) < 0.3) v.currentTime = lead.currentTime; });
+  }, 1000);
+}
+
+// decode a test's videos only when it is about to be seen
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) load(TESTS.find(t => t.el === e.target)); }),
+  { rootMargin: "120% 0px" });
+TESTS.forEach(t => io.observe(t.el));
+// highlight the test on screen in the nav
+let current = TESTS[0];
+const io2 = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) {
+    current = TESTS.find(t => t.el === e.target);
+    nav.querySelectorAll("a").forEach(a => a.classList.toggle("on", +a.dataset.n === current.n));
+    nav.querySelector(`a[data-n="${current.n}"]`).scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+}), { threshold: 0.55 });
+TESTS.forEach(t => io2.observe(t.el));
+
+document.getElementById("muteAll").onclick = () => setSolo(null);
+document.getElementById("theme").onclick = () => {
+  const r = document.documentElement, dark = getComputedStyle(r).getPropertyValue("--bg").trim() === "#0b0d14";
+  r.dataset.theme = dark ? "light" : "dark";
+};
+document.addEventListener("keydown", e => {
+  if (e.target.closest("input, textarea")) return;
+  if (e.code === "Space") { e.preventDefault(); const playing = Object.values(current.vids).some(v => !v.paused); playing ? stopAll() : playAll(current); }
+  else if (e.key === "Escape") document.querySelectorAll(".cell.vid.focus .close").forEach(b => b.click());
+  else if ("123".includes(e.key) && e.key) { const v = current.vids[MODELS[+e.key - 1][0]]; setSolo(soloVideo === v ? null : v); }
+  else if (e.key.toLowerCase() === "m") setSolo(null);
+});
+nav.querySelector("a").classList.add("on");
+</script>
+</body>
+</html>
